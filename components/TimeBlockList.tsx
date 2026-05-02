@@ -1,92 +1,91 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Chip, Divider, IconButton, List, Text } from 'react-native-paper';
-import type { Appointment, AppointmentInput } from '../types/entry';
-import AppointmentForm, { type AppointmentFormHandle } from './AppointmentForm';
-import { appointmentsApi } from '../services/api';
+import { Button, Divider, IconButton, List, Text } from 'react-native-paper';
+import type { TimeBlock, TimeBlockInput } from '../types/entry';
+import TimeBlockForm, { type TimeBlockFormHandle } from './TimeBlockForm';
+import { timeBlocksApi } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
-export interface AppointmentListHandle {
+export interface TimeBlockListHandle {
   openAdd: () => void;
 }
 
 interface Props {
   dailyEntryId: number;
-  appointments: Appointment[];
+  type: 'WORK' | 'FREE';
+  blocks: TimeBlock[];
   onChange: () => void;
 }
 
-const AppointmentList = forwardRef<AppointmentListHandle, Props>(function AppointmentList({ dailyEntryId, appointments, onChange }: Props, ref) {
+function blockDuration(b: TimeBlock): string {
+  const [sh, sm] = b.startTime.split(':').map(Number);
+  const [eh, em] = b.endTime.split(':').map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins < 0) mins += 1440;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockList(
+  { dailyEntryId, type, blocks, onChange }, ref
+) {
+  const [localBlocks, setLocalBlocks] = useState<TimeBlock[]>(blocks);
   const [addOpen, setAddOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Appointment | null>(null);
+  const [editTarget, setEditTarget] = useState<TimeBlock | null>(null);
   const [saving, setSaving] = useState(false);
-  const addFormRef = useRef<AppointmentFormHandle>(null);
-  const editFormRef = useRef<AppointmentFormHandle>(null);
+  const addFormRef = useRef<TimeBlockFormHandle>(null);
+  const editFormRef = useRef<TimeBlockFormHandle>(null);
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
 
   useImperativeHandle(ref, () => ({ openAdd: () => setAddOpen(true) }));
 
-  const handleCreate = async (data: AppointmentInput) => {
-    await appointmentsApi.create(data);
+  const handleCreate = async (data: TimeBlockInput) => {
+    const created = await timeBlocksApi.create(data);
     setAddOpen(false);
-    toast.success('Appointment created');
+    setLocalBlocks(prev => [...prev, created]);
+    toast.success('Block added');
     onChange();
   };
 
-  const handleUpdate = async (data: AppointmentInput) => {
+  const handleUpdate = async (data: TimeBlockInput) => {
     if (!editTarget) return;
-    await appointmentsApi.update(editTarget.id, data);
+    const updated = await timeBlocksApi.update(editTarget.id, data);
     setEditTarget(null);
-    toast.success('Appointment updated');
+    setLocalBlocks(prev => prev.map(b => b.id === updated.id ? updated : b));
+    toast.success('Updated');
     onChange();
   };
 
   const handleDelete = async (id: number) => {
-    await appointmentsApi.delete(id);
-    toast.success('Appointment deleted');
+    await timeBlocksApi.delete(id);
+    setLocalBlocks(prev => prev.filter(b => b.id !== id));
+    toast.success('Deleted');
     onChange();
   };
 
-  const submitAdd = async () => {
-    setSaving(true);
-    try {
-      await addFormRef.current?.submit();
-    } finally {
-      setSaving(false);
-    }
-  };
+  const submitAdd  = async () => { setSaving(true); try { await addFormRef.current?.submit();  } finally { setSaving(false); } };
+  const submitEdit = async () => { setSaving(true); try { await editFormRef.current?.submit(); } finally { setSaving(false); } };
 
-  const submitEdit = async () => {
-    setSaving(true);
-    try {
-      await editFormRef.current?.submit();
-    } finally {
-      setSaving(false);
-    }
-  };
+  const label = type === 'WORK' ? 'Work' : 'Free time';
 
   return (
     <View>
-      {appointments.length === 0 ? (
-        <Text variant="bodySmall" style={styles.empty}>No appointments</Text>
+      {localBlocks.length === 0 ? (
+        <Text variant="bodySmall" style={styles.empty}>No {label.toLowerCase()} blocks</Text>
       ) : (
-        appointments.map((a, i) => (
-          <View key={a.id}>
+        localBlocks.map((b, i) => (
+          <View key={b.id}>
             {i > 0 && <Divider />}
             <List.Item
-              title={a.title}
-              description={() => (
-                <View style={styles.chips}>
-                  {a.time && <Chip compact>{a.time.substring(0, 5)}</Chip>}
-                  {a.durationHours != null && <Chip compact>{a.durationHours}h</Chip>}
-                </View>
-              )}
+              title={`${b.startTime.substring(0, 5)} – ${b.endTime.substring(0, 5)}`}
+              description={blockDuration(b)}
               right={() => (
                 <View style={styles.actions}>
-                  <IconButton icon="pencil" size={16} onPress={() => setEditTarget(a)} />
-                  <IconButton icon="delete" size={16} onPress={() => handleDelete(a.id)} />
+                  <IconButton icon="pencil" size={16} onPress={() => setEditTarget(b)} />
+                  <IconButton icon="delete" size={16} onPress={() => handleDelete(b.id)} />
                 </View>
               )}
             />
@@ -94,16 +93,18 @@ const AppointmentList = forwardRef<AppointmentListHandle, Props>(function Appoin
         ))
       )}
 
+      <Button icon="plus" compact onPress={() => setAddOpen(true)} style={styles.addBtn}>Add</Button>
+
       <Modal visible={addOpen} animationType="slide" onRequestClose={() => setAddOpen(false)}>
         <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
             <View style={styles.modalHeader}>
               <IconButton icon="close" onPress={() => setAddOpen(false)} />
-              <Text variant="titleMedium">New Appointment</Text>
+              <Text variant="titleMedium">Add {label}</Text>
               <Button mode="contained" onPress={submitAdd} loading={saving} disabled={saving}>Save</Button>
             </View>
             <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
-              <AppointmentForm ref={addFormRef} dailyEntryId={dailyEntryId} onSave={handleCreate} />
+              <TimeBlockForm ref={addFormRef} dailyEntryId={dailyEntryId} type={type} onSave={handleCreate} />
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
@@ -114,12 +115,12 @@ const AppointmentList = forwardRef<AppointmentListHandle, Props>(function Appoin
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
             <View style={styles.modalHeader}>
               <IconButton icon="close" onPress={() => setEditTarget(null)} />
-              <Text variant="titleMedium">Edit Appointment</Text>
+              <Text variant="titleMedium">Edit {label}</Text>
               <Button mode="contained" onPress={submitEdit} loading={saving} disabled={saving}>Update</Button>
             </View>
             <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
               {editTarget && (
-                <AppointmentForm ref={editFormRef} dailyEntryId={dailyEntryId} initial={editTarget} onSave={handleUpdate} />
+                <TimeBlockForm ref={editFormRef} dailyEntryId={dailyEntryId} type={type} initial={editTarget} onSave={handleUpdate} />
               )}
             </ScrollView>
           </KeyboardAvoidingView>
@@ -129,11 +130,11 @@ const AppointmentList = forwardRef<AppointmentListHandle, Props>(function Appoin
   );
 });
 
-export default AppointmentList;
+export default TimeBlockList;
 
 const styles = StyleSheet.create({
   empty: { opacity: 0.6, marginTop: 4 },
-  chips: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  addBtn: { alignSelf: 'flex-start', marginTop: 4 },
   actions: { flexDirection: 'row', alignItems: 'center' },
   modalContainer: { flex: 1, backgroundColor: '#FAF9F7' },
   kav: { flex: 1 },

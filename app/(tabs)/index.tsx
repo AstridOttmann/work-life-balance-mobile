@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Dialog, FAB, Portal, Text } from 'react-native-paper';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Button, FAB, IconButton, Text } from 'react-native-paper';
+import dayjs from 'dayjs';
 import type { DailyEntry, DailyEntryInput } from '../../types/entry';
-import { entriesApi } from '../../services/api';
+import { entriesApi, timeBlocksApi } from '../../services/api';
 import EntryCard from '../../components/EntryCard';
-import EntryForm from '../../components/EntryForm';
+import EntryForm, { type EntryFormHandle, type PendingBlock } from '../../components/EntryForm';
 import { useToast } from '../../context/ToastContext';
 
 export default function DailyLogScreen() {
@@ -12,7 +14,11 @@ export default function DailyLogScreen() {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<DailyEntry | null>(null);
+  const [saving, setSaving] = useState(false);
+  const addFormRef = useRef<EntryFormHandle>(null);
+  const editFormRef = useRef<EntryFormHandle>(null);
   const { toast } = useToast();
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     try {
@@ -25,8 +31,13 @@ export default function DailyLogScreen() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCreate = async (data: DailyEntryInput) => {
-    await entriesApi.create(data);
+  const handleCreate = async (data: DailyEntryInput, pendingBlocks?: PendingBlock[]) => {
+    const created = await entriesApi.create(data);
+    if (pendingBlocks && pendingBlocks.length > 0) {
+      await Promise.all(pendingBlocks.map(b =>
+        timeBlocksApi.create({ dailyEntryId: created.id, type: b.type, startTime: b.startTime, endTime: b.endTime })
+      ));
+    }
     setAddOpen(false);
     toast.success('Entry created');
     await load();
@@ -44,6 +55,18 @@ export default function DailyLogScreen() {
     await entriesApi.delete(id);
     toast.success('Entry deleted');
     await load();
+  };
+
+  const submitAdd = async () => {
+    setSaving(true);
+    try { await addFormRef.current?.submit(); }
+    finally { setSaving(false); }
+  };
+
+  const submitEdit = async () => {
+    setSaving(true);
+    try { await editFormRef.current?.submit(); }
+    finally { setSaving(false); }
   };
 
   if (loading) {
@@ -75,27 +98,39 @@ export default function DailyLogScreen() {
 
       <FAB icon="plus" style={styles.fab} onPress={() => setAddOpen(true)} />
 
-      <Portal>
-        <Dialog visible={addOpen} onDismiss={() => setAddOpen(false)}>
-          <Dialog.Title>New Day Entry</Dialog.Title>
-          <Dialog.ScrollArea>
-            <EntryForm onSave={handleCreate} onCancel={() => setAddOpen(false)} />
-          </Dialog.ScrollArea>
-        </Dialog>
+      <Modal visible={addOpen} animationType="slide" onRequestClose={() => setAddOpen(false)}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
+            <View style={styles.modalHeader}>
+              <IconButton icon="close" onPress={() => setAddOpen(false)} />
+              <Text variant="titleMedium">New Day Entry</Text>
+              <Button mode="contained" onPress={submitAdd} loading={saving} disabled={saving}>Save</Button>
+            </View>
+            <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+              <EntryForm ref={addFormRef} onSave={handleCreate} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
 
-        <Dialog visible={!!editTarget} onDismiss={() => setEditTarget(null)}>
-          <Dialog.Title>Edit Entry</Dialog.Title>
-          <Dialog.ScrollArea>
-            {editTarget && (
-              <EntryForm
-                initial={editTarget}
-                onSave={handleUpdate}
-                onCancel={() => setEditTarget(null)}
-              />
-            )}
-          </Dialog.ScrollArea>
-        </Dialog>
-      </Portal>
+      <Modal visible={!!editTarget} animationType="slide" onRequestClose={() => setEditTarget(null)}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
+            <View style={styles.modalHeader}>
+              <IconButton icon="close" onPress={() => setEditTarget(null)} />
+              <Text variant="titleMedium">
+                {editTarget ? dayjs(editTarget.date).format('ddd, YYYY-MM-DD') : ''}
+              </Text>
+              <Button mode="contained" onPress={submitEdit} loading={saving} disabled={saving}>Update</Button>
+            </View>
+            <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+              {editTarget && (
+                <EntryForm ref={editFormRef} initial={editTarget} onSave={handleUpdate} onRefresh={load} />
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -106,4 +141,15 @@ const styles = StyleSheet.create({
   list: { padding: 16 },
   empty: { textAlign: 'center', opacity: 0.6, marginTop: 48 },
   fab: { position: 'absolute', right: 16, bottom: 16 },
+  modalContainer: { flex: 1, backgroundColor: '#FAF9F7' },
+  kav: { flex: 1 },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e0e0e0',
+  },
+  formScroll: { padding: 16, paddingBottom: 32 },
 });

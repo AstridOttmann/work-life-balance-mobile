@@ -5,17 +5,33 @@ export interface DailyEntry {
   freeTimeHours: number | null;
   sleepingHours: number | null;
   mood: number;
+  health: number | null;
   notes: string | null;
+  timeBlocks: TimeBlock[];
   appointments: Appointment[];
 }
 
 export interface DailyEntryInput {
   date: string;
-  workHours: number | null;
-  freeTimeHours: number | null;
   sleepingHours: number | null;
   mood: number;
+  health: number | null;
   notes: string | null;
+}
+
+export interface TimeBlock {
+  id: number;
+  dailyEntryId: number;
+  type: 'WORK' | 'FREE';
+  startTime: string;
+  endTime: string;
+}
+
+export interface TimeBlockInput {
+  dailyEntryId: number;
+  type: 'WORK' | 'FREE';
+  startTime: string;
+  endTime: string;
 }
 
 export interface Appointment {
@@ -37,9 +53,12 @@ export interface Summary {
   period: string;
   startDate: string;
   endDate: string;
-  avgWorkHours: number | null;
-  avgFreeTimeHours: number | null;
-  avgSleepingHours: number | null;
-  avgMood: number | null;
-  entryCount: number;
+  totalWorkHours: number;
+  totalFreeTimeHours: number;
+  totalSleepingHours: number;
+  totalAppointmentHours: number;
+  appointmentCount: number;
+  avgMood: number;
+  avgHealth: number;
+  entries: DailyEntry[];
 }
