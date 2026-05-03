@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const logoutRef = useRef<() => void>(() => {});
+  const tokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   logoutRef.current = logout;
+  tokenRef.current = token;
 
   const login = useCallback(async (emailInput: string, password: string) => {
     const { token: newToken, email: newEmail } = await authApi.login(emailInput, password);
@@ -48,9 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const reqId = api.interceptors.request.use(async config => {
-      const t = await SecureStore.getItemAsync('token');
-      if (t) config.headers['Authorization'] = `Bearer ${t}`;
+    const reqId = api.interceptors.request.use(config => {
+      if (tokenRef.current) config.headers['Authorization'] = `Bearer ${tokenRef.current}`;
       return config;
     });
     const resId = api.interceptors.response.use(
