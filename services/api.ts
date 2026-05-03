@@ -44,3 +44,8 @@ export const appointmentsApi = {
   delete: (id: number) =>
     api.delete(`/appointments/${id}`),
 };
+
+export const authApi = {
+  login: (email: string, password: string) =>
+    api.post<{ token: string; email: string }>('/auth/login', { email, password }).then(r => r.data),
+};

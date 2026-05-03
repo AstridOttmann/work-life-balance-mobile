@@ -52,6 +52,7 @@ const AppointmentForm = forwardRef<AppointmentFormHandle, Props>(({ dailyEntryId
             value={timeDate}
             mode="time"
             display="compact"
+            // @ts-ignore — is24Hour is a valid Android prop not in the shared TS types
             is24Hour={true}
             onChange={(_, d) => { if (d) setTimeDate(d); }}
           />

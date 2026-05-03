@@ -38,6 +38,7 @@ const TimeBlockForm = forwardRef<TimeBlockFormHandle, Props>(({ dailyEntryId, ty
             value={startDate}
             mode="time"
             display="compact"
+            // @ts-ignore — is24Hour is a valid Android prop not in the shared TS types
             is24Hour
             onChange={(_, d) => { if (d) setStartDate(d); }}
           />
@@ -50,6 +51,7 @@ const TimeBlockForm = forwardRef<TimeBlockFormHandle, Props>(({ dailyEntryId, ty
             value={endDate}
             mode="time"
             display="compact"
+            // @ts-ignore — is24Hour is a valid Android prop not in the shared TS types
             is24Hour
             onChange={(_, d) => { if (d) setEndDate(d); }}
           />
