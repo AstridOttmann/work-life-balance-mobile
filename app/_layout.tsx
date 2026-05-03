@@ -1,6 +1,9 @@
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { MD3LightTheme, PaperProvider } from 'react-native-paper';
 import { ToastProvider } from '../context/ToastContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import LoginScreen from '../components/LoginScreen';
 
 const theme = {
   ...MD3LightTheme,
@@ -20,11 +23,38 @@ const theme = {
   },
 };
 
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    backgroundColor: '#FAF9F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+
+function RootContent() {
+  const { token, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color="#D97757" />
+      </View>
+    );
+  }
+
+  if (!token) return <LoginScreen />;
+
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
+
 export default function RootLayout() {
   return (
     <PaperProvider theme={theme}>
       <ToastProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        <AuthProvider>
+          <RootContent />
+        </AuthProvider>
       </ToastProvider>
     </PaperProvider>
   );
