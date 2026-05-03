@@ -38,6 +38,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const id = api.interceptors.response.use(
       response => response,
       (error: AxiosError<{ message?: string }>) => {
+        if (error.response?.status === 401) return Promise.reject(error);
         const serverMessage = error.response?.data?.message;
         const statusMessage =
           error.response?.status === 400 ? 'Bad request' :
