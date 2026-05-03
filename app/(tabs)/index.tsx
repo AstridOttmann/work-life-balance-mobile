@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityIndicator, Button, FAB, IconButton, Text } from 'react-native-paper';
 import dayjs from 'dayjs';
@@ -30,6 +30,11 @@ export default function DailyLogScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => { if (state === 'active') load(); });
+    return () => sub.remove();
+  }, [load]);
 
   const handleCreate = async (data: DailyEntryInput, pendingBlocks?: PendingBlock[]) => {
     const created = await entriesApi.create(data);
