@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { ActivityIndicator, Button, Text } from 'react-native-paper';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
@@ -55,7 +56,7 @@ export default function SummaryScreen() {
     }
   }, [period, date]);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const navigate = (dir: 1 | -1) => {
     setDate(prev =>
