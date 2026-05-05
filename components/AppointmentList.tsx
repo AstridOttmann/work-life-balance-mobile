@@ -5,6 +5,7 @@ import { Button, Chip, Divider, IconButton, List, Text } from 'react-native-pape
 import type { Appointment, AppointmentInput } from '../types/entry';
 import AppointmentForm, { type AppointmentFormHandle } from './AppointmentForm';
 import { appointmentsApi } from '../services/api';
+import { API_ERROR } from '../services/apiRequest';
 import { useToast } from '../context/ToastContext';
 
 export interface AppointmentListHandle {
@@ -29,7 +30,8 @@ const AppointmentList = forwardRef<AppointmentListHandle, Props>(function Appoin
   useImperativeHandle(ref, () => ({ openAdd: () => setAddOpen(true) }));
 
   const handleCreate = async (data: AppointmentInput) => {
-    await appointmentsApi.create(data);
+    const result = await appointmentsApi.create(data);
+    if (result === API_ERROR) { setAddOpen(false); return; }
     setAddOpen(false);
     toast.success('Appointment created');
     onChange();
@@ -37,14 +39,16 @@ const AppointmentList = forwardRef<AppointmentListHandle, Props>(function Appoin
 
   const handleUpdate = async (data: AppointmentInput) => {
     if (!editTarget) return;
-    await appointmentsApi.update(editTarget.id, data);
+    const result = await appointmentsApi.update(editTarget.id, data);
+    if (result === API_ERROR) { setEditTarget(null); return; }
     setEditTarget(null);
     toast.success('Appointment updated');
     onChange();
   };
 
   const handleDelete = async (id: number) => {
-    await appointmentsApi.delete(id);
+    const result = await appointmentsApi.delete(id);
+    if (result === API_ERROR) return;
     toast.success('Appointment deleted');
     onChange();
   };

@@ -42,10 +42,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         const serverMessage = error.response?.data?.message;
         const statusMessage =
           error.response?.status === 400 ? 'Bad request' :
+          error.response?.status === 403 ? 'Access denied' :
           error.response?.status === 404 ? 'Not found' :
           error.response?.status === 409 ? 'Conflict' :
           error.response?.status != null && error.response.status >= 500 ? 'Server error' : null;
         show(serverMessage ?? statusMessage ?? 'Something went wrong', 'error');
+        (error as any)._handled = true;
         return Promise.reject(error);
       }
     );

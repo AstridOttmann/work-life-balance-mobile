@@ -5,6 +5,7 @@ import { Button, Divider, IconButton, List, Text } from 'react-native-paper';
 import type { TimeBlock, TimeBlockInput } from '../types/entry';
 import TimeBlockForm, { type TimeBlockFormHandle } from './TimeBlockForm';
 import { timeBlocksApi } from '../services/api';
+import { API_ERROR } from '../services/apiRequest';
 import { useToast } from '../context/ToastContext';
 
 export interface TimeBlockListHandle {
@@ -44,6 +45,7 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
 
   const handleCreate = async (data: TimeBlockInput) => {
     const created = await timeBlocksApi.create(data);
+    if (created === API_ERROR) { setAddOpen(false); return; }
     setAddOpen(false);
     setLocalBlocks(prev => [...prev, created]);
     toast.success('Block added');
@@ -53,6 +55,7 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
   const handleUpdate = async (data: TimeBlockInput) => {
     if (!editTarget) return;
     const updated = await timeBlocksApi.update(editTarget.id, data);
+    if (updated === API_ERROR) { setEditTarget(null); return; }
     setEditTarget(null);
     setLocalBlocks(prev => prev.map(b => b.id === updated.id ? updated : b));
     toast.success('Updated');
@@ -60,7 +63,8 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
   };
 
   const handleDelete = async (id: number) => {
-    await timeBlocksApi.delete(id);
+    const result = await timeBlocksApi.delete(id);
+    if (result === API_ERROR) return;
     setLocalBlocks(prev => prev.filter(b => b.id !== id));
     toast.success('Deleted');
     onChange();

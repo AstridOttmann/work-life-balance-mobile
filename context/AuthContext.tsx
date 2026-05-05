@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const resId = api.interceptors.response.use(
       response => response,
       (error: AxiosError) => {
-        if (error.response?.status === 401) logoutRef.current();
+        if (error.response?.status === 401 && tokenRef.current) logoutRef.current();
         return Promise.reject(error);
       }
     );
