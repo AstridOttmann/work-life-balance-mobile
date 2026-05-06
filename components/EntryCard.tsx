@@ -81,7 +81,7 @@ export default function EntryCard({ entry, onEdit, onDelete, onRefresh }: Props)
           )}
         </View>
 
-        {entry.notes && <Text variant="bodySmall" style={styles.notes}>{entry.notes}</Text>}
+        {entry.notes && <Text variant="bodySmall" style={styles.notes}>Notes: {entry.notes}</Text>}
 
         {/* Appointments row */}
         <View style={styles.sectionRow}>
