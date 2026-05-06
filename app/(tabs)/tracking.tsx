@@ -90,21 +90,26 @@ export default function TrackingScreen() {
         if (entries === API_ERROR) return;
         const entry = entries[0] ?? null;
         setTodayEntry(entry);
-        if (!entry) return;
         const now = Date.now();
-        for (const b of entry.timeBlocks) {
-          if (b.endTime != null) continue;
-          const restored: TrackerState = {
-            status: 'running',
-            blockId: b.id,
-            dailyEntryId: entry.id,
-            startTime: b.startTime.substring(0, 5),
-            startTimestamp: now,
-            accumulatedMs: now - parseTimeAsToday(b.startTime),
-          };
-          if (b.type === 'WORK') setWork(restored);
-          else setFree(restored);
-        }
+        const running = entry?.timeBlocks.filter(b => b.endTime == null) ?? [];
+        const workBlock = running.find(b => b.type === 'WORK');
+        const freeBlock = running.find(b => b.type === 'FREE');
+        setWork(workBlock ? {
+          status: 'running',
+          blockId: workBlock.id,
+          dailyEntryId: entry!.id,
+          startTime: workBlock.startTime.substring(0, 5),
+          startTimestamp: now,
+          accumulatedMs: now - parseTimeAsToday(workBlock.startTime),
+        } : IDLE);
+        setFree(freeBlock ? {
+          status: 'running',
+          blockId: freeBlock.id,
+          dailyEntryId: entry!.id,
+          startTime: freeBlock.startTime.substring(0, 5),
+          startTimestamp: now,
+          accumulatedMs: now - parseTimeAsToday(freeBlock.startTime),
+        } : IDLE);
       });
     }, [])
   );
