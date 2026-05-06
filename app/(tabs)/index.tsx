@@ -5,6 +5,7 @@ import { ActivityIndicator, Button, FAB, IconButton, Text } from 'react-native-p
 import dayjs from 'dayjs';
 import type { DailyEntry, DailyEntryInput } from '../../types/entry';
 import { entriesApi, timeBlocksApi } from '../../services/api';
+import { API_ERROR } from '../../services/apiRequest';
 import EntryCard from '../../components/EntryCard';
 import EntryForm, { type EntryFormHandle, type PendingBlock } from '../../components/EntryForm';
 import { useToast } from '../../context/ToastContext';
@@ -23,7 +24,7 @@ export default function DailyLogScreen() {
   const load = useCallback(async () => {
     try {
       const data = await entriesApi.getAll();
-      setEntries([...data].sort((a, b) => b.date.localeCompare(a.date)));
+      if (data !== API_ERROR) setEntries([...data].sort((a, b) => b.date.localeCompare(a.date)));
     } finally {
       setLoading(false);
     }
@@ -38,6 +39,7 @@ export default function DailyLogScreen() {
 
   const handleCreate = async (data: DailyEntryInput, pendingBlocks?: PendingBlock[]) => {
     const created = await entriesApi.create(data);
+    if (created === API_ERROR) { setAddOpen(false); return; }
     if (pendingBlocks && pendingBlocks.length > 0) {
       await Promise.all(pendingBlocks.map(b =>
         timeBlocksApi.create({ dailyEntryId: created.id, type: b.type, startTime: b.startTime, endTime: b.endTime })
@@ -50,14 +52,16 @@ export default function DailyLogScreen() {
 
   const handleUpdate = async (data: DailyEntryInput) => {
     if (!editTarget) return;
-    await entriesApi.update(editTarget.id, data);
+    const result = await entriesApi.update(editTarget.id, data);
+    if (result === API_ERROR) { setEditTarget(null); return; }
     setEditTarget(null);
     toast.success('Entry updated');
     await load();
   };
 
   const handleDelete = async (id: number) => {
-    await entriesApi.delete(id);
+    const result = await entriesApi.delete(id);
+    if (result === API_ERROR) return;
     toast.success('Entry deleted');
     await load();
   };

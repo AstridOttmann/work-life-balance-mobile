@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Appointment, AppointmentInput, DailyEntry, DailyEntryInput, Summary, TimeBlock, TimeBlockInput } from '../types/entry';
+import { apiRequest } from './apiRequest';
 
 export const api = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080/api',
@@ -7,40 +8,47 @@ export const api = axios.create({
 
 export const entriesApi = {
   getAll: (from?: string, to?: string) =>
-    api.get<DailyEntry[]>('/entries', { params: { from, to } }).then(r => r.data),
+    apiRequest(api.get<DailyEntry[]>('/entries', { params: { from, to } })),
 
   getById: (id: number) =>
-    api.get<DailyEntry>(`/entries/${id}`).then(r => r.data),
+    apiRequest(api.get<DailyEntry>(`/entries/${id}`)),
 
   create: (data: DailyEntryInput) =>
-    api.post<DailyEntry>('/entries', data).then(r => r.data),
+    apiRequest(api.post<DailyEntry>('/entries', data)),
 
   update: (id: number, data: DailyEntryInput) =>
-    api.put<DailyEntry>(`/entries/${id}`, data).then(r => r.data),
+    apiRequest(api.put<DailyEntry>(`/entries/${id}`, data)),
 
   delete: (id: number) =>
-    api.delete(`/entries/${id}`),
+    apiRequest(api.delete<void>(`/entries/${id}`)),
 
   getSummary: (period: 'weekly' | 'monthly', date: string) =>
-    api.get<Summary>('/entries/summary', { params: { period, date } }).then(r => r.data),
+    apiRequest(api.get<Summary>('/entries/summary', { params: { period, date } })),
 };
 
 export const timeBlocksApi = {
   create: (data: TimeBlockInput) =>
-    api.post<TimeBlock>('/time-blocks', data).then(r => r.data),
+    apiRequest(api.post<TimeBlock>('/time-blocks', data)),
+
   update: (id: number, data: TimeBlockInput) =>
-    api.put<TimeBlock>(`/time-blocks/${id}`, data).then(r => r.data),
+    apiRequest(api.put<TimeBlock>(`/time-blocks/${id}`, data)),
+
   delete: (id: number) =>
-    api.delete(`/time-blocks/${id}`),
+    apiRequest(api.delete<void>(`/time-blocks/${id}`)),
 };
 
 export const appointmentsApi = {
   create: (data: AppointmentInput) =>
-    api.post<Appointment>('/appointments', data).then(r => r.data),
+    apiRequest(api.post<Appointment>('/appointments', data)),
 
   update: (id: number, data: AppointmentInput) =>
-    api.put<Appointment>(`/appointments/${id}`, data).then(r => r.data),
+    apiRequest(api.put<Appointment>(`/appointments/${id}`, data)),
 
   delete: (id: number) =>
-    api.delete(`/appointments/${id}`),
+    apiRequest(api.delete<void>(`/appointments/${id}`)),
+};
+
+export const authApi = {
+  login: (email: string, password: string) =>
+    api.post<{ token: string; email: string }>('/auth/login', { email, password }).then(r => r.data),
 };

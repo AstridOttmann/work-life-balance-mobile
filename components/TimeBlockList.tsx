@@ -5,6 +5,7 @@ import { Button, Divider, IconButton, List, Text } from 'react-native-paper';
 import type { TimeBlock, TimeBlockInput } from '../types/entry';
 import TimeBlockForm, { type TimeBlockFormHandle } from './TimeBlockForm';
 import { timeBlocksApi } from '../services/api';
+import { API_ERROR } from '../services/apiRequest';
 import { useToast } from '../context/ToastContext';
 
 export interface TimeBlockListHandle {
@@ -19,6 +20,7 @@ interface Props {
 }
 
 function blockDuration(b: TimeBlock): string {
+  if (!b.endTime) return 'Running';
   const [sh, sm] = b.startTime.split(':').map(Number);
   const [eh, em] = b.endTime.split(':').map(Number);
   let mins = (eh * 60 + em) - (sh * 60 + sm);
@@ -44,6 +46,7 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
 
   const handleCreate = async (data: TimeBlockInput) => {
     const created = await timeBlocksApi.create(data);
+    if (created === API_ERROR) { setAddOpen(false); return; }
     setAddOpen(false);
     setLocalBlocks(prev => [...prev, created]);
     toast.success('Block added');
@@ -53,6 +56,7 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
   const handleUpdate = async (data: TimeBlockInput) => {
     if (!editTarget) return;
     const updated = await timeBlocksApi.update(editTarget.id, data);
+    if (updated === API_ERROR) { setEditTarget(null); return; }
     setEditTarget(null);
     setLocalBlocks(prev => prev.map(b => b.id === updated.id ? updated : b));
     toast.success('Updated');
@@ -60,7 +64,8 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
   };
 
   const handleDelete = async (id: number) => {
-    await timeBlocksApi.delete(id);
+    const result = await timeBlocksApi.delete(id);
+    if (result === API_ERROR) return;
     setLocalBlocks(prev => prev.filter(b => b.id !== id));
     toast.success('Deleted');
     onChange();
@@ -80,7 +85,7 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
           <View key={b.id}>
             {i > 0 && <Divider />}
             <List.Item
-              title={`${b.startTime.substring(0, 5)} – ${b.endTime.substring(0, 5)}`}
+              title={`${b.startTime.substring(0, 5)} – ${b.endTime ? b.endTime.substring(0, 5) : 'Running'}`}
               description={blockDuration(b)}
               right={() => (
                 <View style={styles.actions}>

@@ -6,6 +6,7 @@ import { BarChart, LineChart } from 'react-native-gifted-charts';
 import dayjs from 'dayjs';
 import type { Summary } from '../../types/entry';
 import { entriesApi } from '../../services/api';
+import { API_ERROR } from '../../services/apiRequest';
 
 const COLORS = {
   work: '#1976d2',
@@ -50,7 +51,7 @@ export default function SummaryScreen() {
     setLoading(true);
     try {
       const data = await entriesApi.getSummary(period, date);
-      setSummary(data);
+      if (data !== API_ERROR) setSummary(data);
     } finally {
       setLoading(false);
     }

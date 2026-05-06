@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Divider, IconButton, Text, TextInput } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -36,6 +36,7 @@ function blockDuration(start: string, end: string): string {
 
 const EntryForm = forwardRef<EntryFormHandle, Props>(({ initial, onSave, onRefresh }, ref) => {
   const [date, setDate] = useState<Date>(initial ? new Date(initial.date) : new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const initSleep = toSleepParts(initial?.sleepingHours);
   const [sleepH, setSleepH] = useState(initSleep.h);
   const [sleepM, setSleepM] = useState(initSleep.m);
@@ -88,12 +89,28 @@ const EntryForm = forwardRef<EntryFormHandle, Props>(({ initial, onSave, onRefre
       {!initial && (
         <>
           <Text variant="labelMedium" style={styles.label}>Date</Text>
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display="compact"
-            onChange={(_, d) => { if (d) setDate(d); }}
-          />
+          {Platform.OS === 'android' ? (
+            <>
+              <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateButton}>
+                <Text>{date.toLocaleDateString()}</Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="default"
+                  onChange={(_, d) => { setShowDatePicker(false); if (d) setDate(d); }}
+                />
+              )}
+            </>
+          ) : (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="compact"
+              onChange={(_, d) => { if (d) setDate(d); }}
+            />
+          )}
         </>
       )}
 
@@ -209,6 +226,7 @@ export default EntryForm;
 
 const styles = StyleSheet.create({
   container: { gap: 12, paddingVertical: 8 },
+  dateButton: { paddingVertical: 8, paddingHorizontal: 4 },
   label: { opacity: 0.7 },
   input: { backgroundColor: 'transparent' },
   row: { flexDirection: 'row', gap: 8 },
