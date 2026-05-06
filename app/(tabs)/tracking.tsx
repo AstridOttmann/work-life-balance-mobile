@@ -141,16 +141,14 @@ export default function TrackingScreen() {
     setDisplayWork(elapsedMs(work));
     setDisplayFree(elapsedMs(free));
     if (work.status !== 'running' && free.status !== 'running') return;
-    let interval: ReturnType<typeof setInterval>;
-    const timeout = setTimeout(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    const tick = () => {
       setDisplayWork(elapsedMs(work));
       setDisplayFree(elapsedMs(free));
-      interval = setInterval(() => {
-        setDisplayWork(elapsedMs(work));
-        setDisplayFree(elapsedMs(free));
-      }, 1000);
-    }, 1000 - (Date.now() % 1000));
-    return () => { clearTimeout(timeout); clearInterval(interval); };
+      timeout = setTimeout(tick, 1000 - (Date.now() % 1000));
+    };
+    timeout = setTimeout(tick, 1000 - (Date.now() % 1000));
+    return () => clearTimeout(timeout);
   }, [work, free]);
 
   const ensureTodayEntry = useCallback(async (): Promise<number | null> => {
