@@ -26,6 +26,8 @@ export interface TimeBlock {
   startTime: string;
   endTime: string | null;
   paused: boolean;
+  elapsedMs: number;
+  segmentStartTime: string | null;
 }
 
 export interface TimeBlockInput {
@@ -34,6 +36,8 @@ export interface TimeBlockInput {
   startTime: string;
   endTime?: string;
   paused?: boolean;
+  elapsedMs?: number;
+  segmentStartTime?: string;
 }
 
 export interface Appointment {

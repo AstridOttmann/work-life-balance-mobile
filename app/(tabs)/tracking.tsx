@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { useFocusEffect } from 'expo-router';
 import { Chip, Text } from 'react-native-paper';
 import { Svg, Circle } from 'react-native-svg';
@@ -99,26 +98,30 @@ export default function TrackingScreen() {
         const freeBlock = open.find(b => b.type === 'FREE');
         if (workBlock) {
           const isPaused = workBlock.paused;
-          const stored = isPaused ? await SecureStore.getItemAsync('wlb_tracker_WORK') : null;
+          const seg = workBlock.segmentStartTime ?? workBlock.startTime;
           setWork({
             status: isPaused ? 'paused' : 'running',
             blockId: workBlock.id, dailyEntryId: entry!.id,
             startTime: workBlock.startTime.substring(0, 5),
             startTimestamp: isPaused ? null : now,
-            accumulatedMs: isPaused ? Number(stored ?? '0') : now - parseTimeAsToday(workBlock.startTime),
+            accumulatedMs: isPaused
+              ? workBlock.elapsedMs
+              : workBlock.elapsedMs + (now - parseTimeAsToday(seg)),
           });
-        } else { await SecureStore.deleteItemAsync('wlb_tracker_WORK'); setWork(IDLE); }
+        } else setWork(IDLE);
         if (freeBlock) {
           const isPaused = freeBlock.paused;
-          const stored = isPaused ? await SecureStore.getItemAsync('wlb_tracker_FREE') : null;
+          const seg = freeBlock.segmentStartTime ?? freeBlock.startTime;
           setFree({
             status: isPaused ? 'paused' : 'running',
             blockId: freeBlock.id, dailyEntryId: entry!.id,
             startTime: freeBlock.startTime.substring(0, 5),
             startTimestamp: isPaused ? null : now,
-            accumulatedMs: isPaused ? Number(stored ?? '0') : now - parseTimeAsToday(freeBlock.startTime),
+            accumulatedMs: isPaused
+              ? freeBlock.elapsedMs
+              : freeBlock.elapsedMs + (now - parseTimeAsToday(seg)),
           });
-        } else { await SecureStore.deleteItemAsync('wlb_tracker_FREE'); setFree(IDLE); }
+        } else setFree(IDLE);
       })();
     }, [])
   );
@@ -166,7 +169,7 @@ export default function TrackingScreen() {
     const dailyEntryId = await ensureTodayEntry();
     if (dailyEntryId === null) { toast.error('Failed to start tracker'); return; }
     const now = dayjs();
-    const block = await timeBlocksApi.create({ dailyEntryId, type, startTime: now.format('HH:mm:ss') });
+    const block = await timeBlocksApi.create({ dailyEntryId, type, startTime: now.format('HH:mm:ss'), segmentStartTime: now.format('HH:mm:ss') });
     if (block === API_ERROR) { toast.error('Failed to start tracker'); return; }
     const state: TrackerState = {
       status: 'running',
@@ -183,26 +186,25 @@ export default function TrackingScreen() {
   const handlePause = useCallback(async (type: 'WORK' | 'FREE') => {
     const tracker = type === 'WORK' ? work : free;
     const setter = type === 'WORK' ? setWork : setFree;
-    const key = `wlb_tracker_${type}`;
     if (tracker.status === 'running') {
       if (tracker.blockId && tracker.dailyEntryId && tracker.startTime) {
+        const newAcc = tracker.accumulatedMs + (tracker.startTimestamp != null ? Date.now() - tracker.startTimestamp : 0);
         const result = await timeBlocksApi.update(tracker.blockId, {
           dailyEntryId: tracker.dailyEntryId, type,
-          startTime: tracker.startTime + ':00', paused: true,
+          startTime: tracker.startTime + ':00', paused: true, elapsedMs: newAcc,
         });
         if (result === API_ERROR) { toast.error('Failed to pause tracker'); return; }
+        setter(prev => ({ ...prev, status: 'paused', startTimestamp: null, accumulatedMs: newAcc }));
       }
-      const newAcc = tracker.accumulatedMs + (tracker.startTimestamp != null ? Date.now() - tracker.startTimestamp : 0);
-      await SecureStore.setItemAsync(key, String(newAcc));
-      setter(prev => ({ ...prev, status: 'paused', startTimestamp: null, accumulatedMs: newAcc }));
     } else if (tracker.status === 'paused') {
       if (!tracker.blockId || !tracker.dailyEntryId || !tracker.startTime) { toast.error('Failed to resume tracker'); return; }
+      const now = dayjs();
       const result = await timeBlocksApi.update(tracker.blockId, {
         dailyEntryId: tracker.dailyEntryId, type,
         startTime: tracker.startTime + ':00', paused: false,
+        segmentStartTime: now.format('HH:mm:ss'),
       });
       if (result === API_ERROR) { toast.error('Failed to resume tracker'); return; }
-      await SecureStore.deleteItemAsync(key);
       setter(prev => ({ ...prev, status: 'running', startTimestamp: Date.now() }));
     }
   }, [work, free, toast]);
@@ -215,7 +217,6 @@ export default function TrackingScreen() {
       startTime: tracker.startTime + ':00', paused: false, endTime: dayjs().format('HH:mm:ss'),
     });
     if (result === API_ERROR) { toast.error('Failed to stop tracker'); return; }
-    await SecureStore.deleteItemAsync(`wlb_tracker_${type}`);
     if (type === 'WORK') setWork(IDLE); else setFree(IDLE);
     await refreshToday();
   }, [work, free, refreshToday, toast]);
