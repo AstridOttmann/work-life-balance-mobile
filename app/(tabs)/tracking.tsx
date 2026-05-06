@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { useFocusEffect } from 'expo-router';
 import { Chip, Text } from 'react-native-paper';
 import { Svg, Circle } from 'react-native-svg';
@@ -86,32 +87,39 @@ export default function TrackingScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const today = dayjs().format('YYYY-MM-DD');
-      entriesApi.getAll(today, today).then(entries => {
+      (async () => {
+        const today = dayjs().format('YYYY-MM-DD');
+        const entries = await entriesApi.getAll(today, today);
         if (entries === API_ERROR) return;
         const entry = entries[0] ?? null;
         setTodayEntry(entry);
         const now = Date.now();
-        const running = entry?.timeBlocks.filter(b => b.endTime == null) ?? [];
-        const workBlock = running.find(b => b.type === 'WORK');
-        const freeBlock = running.find(b => b.type === 'FREE');
-        setWork(workBlock ? {
-          status: 'running',
-          blockId: workBlock.id,
-          dailyEntryId: entry!.id,
-          startTime: workBlock.startTime.substring(0, 5),
-          startTimestamp: now,
-          accumulatedMs: now - parseTimeAsToday(workBlock.startTime),
-        } : IDLE);
-        setFree(freeBlock ? {
-          status: 'running',
-          blockId: freeBlock.id,
-          dailyEntryId: entry!.id,
-          startTime: freeBlock.startTime.substring(0, 5),
-          startTimestamp: now,
-          accumulatedMs: now - parseTimeAsToday(freeBlock.startTime),
-        } : IDLE);
-      });
+        const open = entry?.timeBlocks.filter(b => b.endTime == null) ?? [];
+        const workBlock = open.find(b => b.type === 'WORK');
+        const freeBlock = open.find(b => b.type === 'FREE');
+        if (workBlock) {
+          const isPaused = workBlock.paused;
+          const stored = isPaused ? await SecureStore.getItemAsync('wlb_tracker_WORK') : null;
+          setWork({
+            status: isPaused ? 'paused' : 'running',
+            blockId: workBlock.id, dailyEntryId: entry!.id,
+            startTime: workBlock.startTime.substring(0, 5),
+            startTimestamp: isPaused ? null : now,
+            accumulatedMs: isPaused ? Number(stored ?? '0') : now - parseTimeAsToday(workBlock.startTime),
+          });
+        } else { await SecureStore.deleteItemAsync('wlb_tracker_WORK'); setWork(IDLE); }
+        if (freeBlock) {
+          const isPaused = freeBlock.paused;
+          const stored = isPaused ? await SecureStore.getItemAsync('wlb_tracker_FREE') : null;
+          setFree({
+            status: isPaused ? 'paused' : 'running',
+            blockId: freeBlock.id, dailyEntryId: entry!.id,
+            startTime: freeBlock.startTime.substring(0, 5),
+            startTimestamp: isPaused ? null : now,
+            accumulatedMs: isPaused ? Number(stored ?? '0') : now - parseTimeAsToday(freeBlock.startTime),
+          });
+        } else { await SecureStore.deleteItemAsync('wlb_tracker_FREE'); setFree(IDLE); }
+      })();
     }, [])
   );
 
@@ -175,40 +183,39 @@ export default function TrackingScreen() {
   const handlePause = useCallback(async (type: 'WORK' | 'FREE') => {
     const tracker = type === 'WORK' ? work : free;
     const setter = type === 'WORK' ? setWork : setFree;
+    const key = `wlb_tracker_${type}`;
     if (tracker.status === 'running') {
       if (tracker.blockId && tracker.dailyEntryId && tracker.startTime) {
         const result = await timeBlocksApi.update(tracker.blockId, {
           dailyEntryId: tracker.dailyEntryId, type,
-          startTime: tracker.startTime + ':00', endTime: dayjs().format('HH:mm:ss'),
+          startTime: tracker.startTime + ':00', paused: true,
         });
         if (result === API_ERROR) { toast.error('Failed to pause tracker'); return; }
       }
-      setter(prev => ({
-        ...prev, status: 'paused', blockId: null, startTimestamp: null,
-        accumulatedMs: prev.accumulatedMs + (prev.startTimestamp != null ? Date.now() - prev.startTimestamp : 0),
-      }));
+      const newAcc = tracker.accumulatedMs + (tracker.startTimestamp != null ? Date.now() - tracker.startTimestamp : 0);
+      await SecureStore.setItemAsync(key, String(newAcc));
+      setter(prev => ({ ...prev, status: 'paused', startTimestamp: null, accumulatedMs: newAcc }));
     } else if (tracker.status === 'paused') {
-      if (!tracker.dailyEntryId) { toast.error('Failed to resume tracker'); return; }
-      const now = dayjs();
-      const block = await timeBlocksApi.create({ dailyEntryId: tracker.dailyEntryId, type, startTime: now.format('HH:mm:ss') });
-      if (block === API_ERROR) { toast.error('Failed to resume tracker'); return; }
-      setter(prev => ({ ...prev, status: 'running', blockId: block.id, startTime: now.format('HH:mm'), startTimestamp: Date.now() }));
+      if (!tracker.blockId || !tracker.dailyEntryId || !tracker.startTime) { toast.error('Failed to resume tracker'); return; }
+      const result = await timeBlocksApi.update(tracker.blockId, {
+        dailyEntryId: tracker.dailyEntryId, type,
+        startTime: tracker.startTime + ':00', paused: false,
+      });
+      if (result === API_ERROR) { toast.error('Failed to resume tracker'); return; }
+      await SecureStore.deleteItemAsync(key);
+      setter(prev => ({ ...prev, status: 'running', startTimestamp: Date.now() }));
     }
   }, [work, free, toast]);
 
   const handleStop = useCallback(async (type: 'WORK' | 'FREE') => {
     const tracker = type === 'WORK' ? work : free;
-    if (tracker.status === 'paused') {
-      if (type === 'WORK') setWork(IDLE); else setFree(IDLE);
-      await refreshToday();
-      return;
-    }
     if (!tracker.blockId || !tracker.dailyEntryId || !tracker.startTime) return;
     const result = await timeBlocksApi.update(tracker.blockId, {
       dailyEntryId: tracker.dailyEntryId, type,
-      startTime: tracker.startTime + ':00', endTime: dayjs().format('HH:mm:ss'),
+      startTime: tracker.startTime + ':00', paused: false, endTime: dayjs().format('HH:mm:ss'),
     });
     if (result === API_ERROR) { toast.error('Failed to stop tracker'); return; }
+    await SecureStore.deleteItemAsync(`wlb_tracker_${type}`);
     if (type === 'WORK') setWork(IDLE); else setFree(IDLE);
     await refreshToday();
   }, [work, free, refreshToday, toast]);

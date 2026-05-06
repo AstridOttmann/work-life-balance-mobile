@@ -25,6 +25,7 @@ export interface TimeBlock {
   type: 'WORK' | 'FREE';
   startTime: string;
   endTime: string | null;
+  paused: boolean;
 }
 
 export interface TimeBlockInput {
@@ -32,6 +33,7 @@ export interface TimeBlockInput {
   type: 'WORK' | 'FREE';
   startTime: string;
   endTime?: string;
+  paused?: boolean;
 }
 
 export interface Appointment {
