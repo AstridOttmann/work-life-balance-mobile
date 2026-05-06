@@ -202,7 +202,7 @@ export default function TrackingScreen() {
       const result = await timeBlocksApi.update(tracker.blockId, {
         dailyEntryId: tracker.dailyEntryId, type,
         startTime: tracker.startTime + ':00', paused: false,
-        segmentStartTime: now.format('HH:mm:ss'),
+        elapsedMs: tracker.accumulatedMs, segmentStartTime: now.format('HH:mm:ss'),
       });
       if (result === API_ERROR) { toast.error('Failed to resume tracker'); return; }
       setter(prev => ({ ...prev, status: 'running', startTimestamp: Date.now() }));
