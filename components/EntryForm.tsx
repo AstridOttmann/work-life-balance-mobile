@@ -11,7 +11,7 @@ export interface EntryFormHandle {
   submit: () => Promise<void>;
 }
 
-export type PendingBlock = { type: 'WORK' | 'FREE'; startTime: string; endTime: string };
+export type PendingBlock = { type: 'WORK' | 'FREE'; startTime: string; endTime: string | undefined};
 
 interface Props {
   initial?: DailyEntry;
@@ -154,8 +154,8 @@ const EntryForm = forwardRef<EntryFormHandle, Props>(({ initial, onSave, onRefre
                   blocks.map((b, i) => (
                     <View key={i} style={styles.pendingRow}>
                       <Text variant="bodySmall" style={styles.pendingTime}>
-                        {b.startTime.substring(0, 5)} – {b.endTime.substring(0, 5)}
-                        {'  '}<Text style={styles.pendingDur}>{blockDuration(b.startTime, b.endTime)}</Text>
+                        {b.startTime.substring(0, 5)} – {b.endTime? b.endTime.substring(0, 5) : 0}
+                        {'  '}{b.endTime && <Text style={styles.pendingDur}>{blockDuration(b.startTime, b.endTime)}</Text>}
                       </Text>
                       <IconButton
                         icon="delete"

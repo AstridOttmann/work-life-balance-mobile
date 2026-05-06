@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 export default function TabLayout() {
   return (
     <Tabs
+      initialRouteName="tracking"
       screenOptions={{
         headerStyle: { backgroundColor: '#D97757' },
         headerTintColor: '#fff',
@@ -14,6 +15,15 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
+        name="tracking"
+        options={{
+          title: 'Tracking',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="timer-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: 'Daily Log',
@@ -23,9 +33,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="summary"
+        name="statistics"
         options={{
-          title: 'Summary',
+          title: 'Statistics',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
           ),

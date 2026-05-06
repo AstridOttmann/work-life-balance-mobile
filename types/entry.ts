@@ -24,14 +24,20 @@ export interface TimeBlock {
   dailyEntryId: number;
   type: 'WORK' | 'FREE';
   startTime: string;
-  endTime: string;
+  endTime: string | null;
+  paused: boolean;
+  elapsedMs: number;
+  segmentStartTime: string | null;
 }
 
 export interface TimeBlockInput {
   dailyEntryId: number;
   type: 'WORK' | 'FREE';
   startTime: string;
-  endTime: string;
+  endTime?: string;
+  paused?: boolean;
+  elapsedMs?: number;
+  segmentStartTime?: string;
 }
 
 export interface Appointment {

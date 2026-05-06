@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Divider, IconButton, List, Text } from 'react-native-paper';
+import {Button, Divider, IconButton, List, Text} from 'react-native-paper';
 import type { TimeBlock, TimeBlockInput } from '../types/entry';
 import TimeBlockForm, { type TimeBlockFormHandle } from './TimeBlockForm';
 import { timeBlocksApi } from '../services/api';
@@ -20,7 +20,7 @@ interface Props {
 }
 
 function blockDuration(b: TimeBlock): string {
-  if (!b.endTime) return 'Running';
+  if (!b.endTime) return ''; // b.paused ? 'Paused' : 'Running';
   const [sh, sm] = b.startTime.split(':').map(Number);
   const [eh, em] = b.endTime.split(':').map(Number);
   let mins = (eh * 60 + em) - (sh * 60 + sm);
@@ -85,8 +85,8 @@ const TimeBlockList = forwardRef<TimeBlockListHandle, Props>(function TimeBlockL
           <View key={b.id}>
             {i > 0 && <Divider />}
             <List.Item
-              title={`${b.startTime.substring(0, 5)} – ${b.endTime ? b.endTime.substring(0, 5) : 'Running'}`}
-              description={blockDuration(b)}
+              title={`${b.startTime.substring(0, 5)} – ${b.endTime ? b.endTime.substring(0, 5) : b.paused ? 'Paused' : 'Running'}`}
+              description={b.endTime && blockDuration(b)}
               right={() => (
                 <View style={styles.actions}>
                   <IconButton icon="pencil" size={16} onPress={() => setEditTarget(b)} />
