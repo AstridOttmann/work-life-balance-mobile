@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AppState, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { Button, Chip, Text } from 'react-native-paper';
+import { Chip, Text } from 'react-native-paper';
 import { Svg, Circle } from 'react-native-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
@@ -265,9 +265,11 @@ function TrackerCard({ type, tracker, otherStatus, onStart, onPause, onStop }: T
         <MaterialCommunityIcons name={isWork ? 'briefcase' : 'spa'} size={20} color={accentColor} />
         <Text variant="titleMedium" style={styles.cardTitle}>{isWork ? 'Work Time' : 'Free Time'}</Text>
         {tracker.status !== 'idle' && (
-          <Chip compact style={[styles.statusChip, { backgroundColor: chipBg }]} textStyle={{ color: chipText, fontSize: 11 }}>
-            {tracker.status === 'running' ? 'Running' : 'Paused'}
-          </Chip>
+          <View style={[styles.statusChip, { backgroundColor: chipBg }]}>
+            <Text style={{ color: chipText, fontSize: 11, fontWeight: '600' }}>
+              {tracker.status === 'running' ? 'Running' : 'Paused'}
+            </Text>
+          </View>
         )}
       </View>
 
@@ -296,41 +298,35 @@ function TrackerCard({ type, tracker, otherStatus, onStart, onPause, onStop }: T
 
       <View style={styles.buttons}>
         <View style={styles.btnCol}>
-          <Button
-            mode="contained"
+          <TouchableOpacity
             disabled={startDisabled}
             onPress={onStart}
             style={[styles.btn, { backgroundColor: startDisabled ? '#e0e0e0' : PRIMARY }]}
-            contentStyle={styles.btnContent}
           >
-            <MaterialCommunityIcons name="play" size={22} color={startDisabled ? '#9e9e9e' : '#fff'} />
-          </Button>
+            <MaterialCommunityIcons name="play" size={24} color={startDisabled ? '#9e9e9e' : '#fff'} />
+          </TouchableOpacity>
           <Text variant="labelSmall" style={styles.btnLabel}>Start</Text>
         </View>
         <View style={styles.btnCol}>
-          <Button
-            mode="outlined"
+          <TouchableOpacity
             disabled={pauseDisabled}
             onPress={onPause}
-            style={styles.btn}
-            contentStyle={styles.btnContent}
+            style={[styles.btn, styles.btnOutlined, { borderColor: pauseDisabled ? '#e0e0e0' : '#1A1A1A', opacity: pauseDisabled ? 0.4 : 1 }]}
           >
-            <MaterialCommunityIcons name="pause" size={22} color={pauseDisabled ? '#bbb' : '#1A1A1A'} />
-          </Button>
+            <MaterialCommunityIcons name="pause" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
           <Text variant="labelSmall" style={styles.btnLabel}>
             {tracker.status === 'paused' ? 'Resume' : 'Pause'}
           </Text>
         </View>
         <View style={styles.btnCol}>
-          <Button
-            mode="outlined"
+          <TouchableOpacity
             disabled={stopDisabled}
             onPress={onStop}
-            style={[styles.btn, !stopDisabled && styles.stopBtn]}
-            contentStyle={styles.btnContent}
+            style={[styles.btn, styles.btnOutlined, { borderColor: stopDisabled ? '#e0e0e0' : '#ba1a1a', opacity: stopDisabled ? 0.4 : 1 }]}
           >
-            <MaterialCommunityIcons name="stop" size={22} color={stopDisabled ? '#bbb' : '#ba1a1a'} />
-          </Button>
+            <MaterialCommunityIcons name="stop" size={24} color={stopDisabled ? '#bbb' : '#ba1a1a'} />
+          </TouchableOpacity>
           <Text variant="labelSmall" style={styles.btnLabel}>Stop</Text>
         </View>
       </View>
@@ -352,9 +348,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, paddingRight: 4 },
   cardTitle: { flex: 1, fontWeight: '700' },
-  statusChip: { height: 24 },
+  statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   ringContainer: { alignItems: 'center', justifyContent: 'center', marginVertical: 8 },
   timerOverlay: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   timerText: {
@@ -365,9 +361,8 @@ const styles = StyleSheet.create({
   },
   buttons: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 },
   btnCol: { alignItems: 'center', gap: 4 },
-  btn: { width: 56, height: 56, borderRadius: 12 },
-  btnContent: { width: 56, height: 56 },
-  stopBtn: { borderColor: '#ba1a1a' },
+  btn: { width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  btnOutlined: { backgroundColor: 'transparent', borderWidth: 1.5 },
   btnLabel: { color: SECONDARY, marginTop: 2 },
   summaryCard: {
     backgroundColor: '#fff',
