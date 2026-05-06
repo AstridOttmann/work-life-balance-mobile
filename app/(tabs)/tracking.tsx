@@ -56,10 +56,10 @@ function formatHM(hours: number): string {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
-function parseTimeAsToday(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
+function parseTimeAsToday(hhmmss: string): number {
+  const [h, m, s = 0] = hhmmss.split(':').map(Number);
   const d = new Date();
-  d.setHours(h, m, 0, 0);
+  d.setHours(h, m, s, 0);
   return d.getTime();
 }
 
