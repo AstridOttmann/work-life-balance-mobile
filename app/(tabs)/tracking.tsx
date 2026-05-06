@@ -138,14 +138,19 @@ export default function TrackingScreen() {
   }, []);
 
   useEffect(() => {
-    const update = () => {
+    setDisplayWork(elapsedMs(work));
+    setDisplayFree(elapsedMs(free));
+    if (work.status !== 'running' && free.status !== 'running') return;
+    let interval: ReturnType<typeof setInterval>;
+    const timeout = setTimeout(() => {
       setDisplayWork(elapsedMs(work));
       setDisplayFree(elapsedMs(free));
-    };
-    update();
-    if (work.status !== 'running' && free.status !== 'running') return;
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
+      interval = setInterval(() => {
+        setDisplayWork(elapsedMs(work));
+        setDisplayFree(elapsedMs(free));
+      }, 1000);
+    }, 1000 - (Date.now() % 1000));
+    return () => { clearTimeout(timeout); clearInterval(interval); };
   }, [work, free]);
 
   const ensureTodayEntry = useCallback(async (): Promise<number | null> => {
