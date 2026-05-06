@@ -80,7 +80,8 @@ export default function TrackingScreen() {
   const [work, setWork] = useState<TrackerState>(IDLE);
   const [free, setFree] = useState<TrackerState>(IDLE);
   const [todayEntry, setTodayEntry] = useState<DailyEntry | null>(null);
-  const [, setTick] = useState(0);
+  const [displayWork, setDisplayWork] = useState(0);
+  const [displayFree, setDisplayFree] = useState(0);
   const { toast } = useToast();
 
   useFocusEffect(
@@ -126,10 +127,15 @@ export default function TrackingScreen() {
   }, []);
 
   useEffect(() => {
+    const update = () => {
+      setDisplayWork(elapsedMs(work));
+      setDisplayFree(elapsedMs(free));
+    };
+    update();
     if (work.status !== 'running' && free.status !== 'running') return;
-    const id = setInterval(() => setTick(t => t + 1), 1000);
+    const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [work.status, free.status]);
+  }, [work, free]);
 
   const ensureTodayEntry = useCallback(async (): Promise<number | null> => {
     const today = dayjs().format('YYYY-MM-DD');
@@ -206,6 +212,7 @@ export default function TrackingScreen() {
       <TrackerCard
         type="WORK"
         tracker={work}
+        elapsed={displayWork}
         otherStatus={free.status}
         onStart={() => handleStart('WORK')}
         onPause={() => handlePause('WORK')}
@@ -214,6 +221,7 @@ export default function TrackingScreen() {
       <TrackerCard
         type="FREE"
         tracker={free}
+        elapsed={displayFree}
         otherStatus={work.status}
         onStart={() => handleStart('FREE')}
         onPause={() => handlePause('FREE')}
@@ -238,17 +246,17 @@ export default function TrackingScreen() {
 interface TrackerCardProps {
   type: 'WORK' | 'FREE';
   tracker: TrackerState;
+  elapsed: number;
   otherStatus: TrackerState['status'];
   onStart: () => void;
   onPause: () => void;
   onStop: () => void;
 }
 
-function TrackerCard({ type, tracker, otherStatus, onStart, onPause, onStop }: TrackerCardProps) {
+function TrackerCard({ type, tracker, elapsed, otherStatus, onStart, onPause, onStop }: TrackerCardProps) {
   const isWork = type === 'WORK';
   const accentColor = isWork ? PRIMARY : SECONDARY;
   const trackColor = isWork ? '#ffdbd0' : '#e0e0e0';
-  const elapsed = elapsedMs(tracker);
   const progress = Math.min(elapsed / MAX_MS, 1);
   const strokeDashoffset = RING_CIRCUMFERENCE * (1 - progress);
 
@@ -266,7 +274,7 @@ function TrackerCard({ type, tracker, otherStatus, onStart, onPause, onStop }: T
         <Text variant="titleMedium" style={styles.cardTitle}>{isWork ? 'Work Time' : 'Free Time'}</Text>
         {tracker.status !== 'idle' && (
           <View style={[styles.statusChip, { backgroundColor: chipBg }]}>
-            <Text style={{ color: chipText, fontSize: 11, fontWeight: '600' }}>
+            <Text style={{ color: chipText, fontSize: 13, fontWeight: '600' }}>
               {tracker.status === 'running' ? 'Running' : 'Paused'}
             </Text>
           </View>
@@ -350,7 +358,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, paddingRight: 4 },
   cardTitle: { flex: 1, fontWeight: '700' },
-  statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
   ringContainer: { alignItems: 'center', justifyContent: 'center', marginVertical: 8 },
   timerOverlay: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
   timerText: {
